@@ -12,27 +12,27 @@ from urllib.request import urlopen
 RELEASE = "20260901"
 
 ARTIFACTS = {
-    ("linux", "x86_64"): (
+    ("20260901", "linux", "x86_64"): (
         "x86_64-unknown-linux-gnu",
         "0651dd7157d3debf769e15a52c1de9de7fbcdc36ba72faf79fde3c44f14d9461",
     ),
-    ("linux", "aarch64"): (
+    ("20260901", "linux", "aarch64"): (
         "aarch64-unknown-linux-gnu",
         "76ed18125286d7dc96ce24023d1e319dbd55a89a767102411b1ea23846113f69",
     ),
-    ("osx", "x86_64"): (
+    ("20260901", "osx", "x86_64"): (
         "x86_64-apple-darwin",
         "49f0d97f506b855eed60b74a8ac138595c5b39799a6aa5e0d7ca8abe1019a4d4",
     ),
-    ("osx", "aarch64"): (
+    ("20260901", "osx", "aarch64"): (
         "aarch64-apple-darwin",
         "b9054a9d3d54f4cb5573d44907fddb29874b08909bde73f29f2868cf872223ee",
     ),
-    ("windows", "x86_64"): (
+    ("20260901", "windows", "x86_64"): (
         "x86_64-pc-windows-msvc",
         "9bcc038a0bf180612ed56dec93d4977d035e80b8d9320ef51a38c287baf134b7",
     ),
-    ("windows", "aarch64"): (
+    ("20260901", "windows", "aarch64"): (
         "aarch64-pc-windows-msvc",
         "ce87247378f43f88e0202a0fa6d3cdb5f5fb246a3bc61b2fb604bd49b7862508",
     ),
@@ -119,9 +119,18 @@ def _extract(archive_path, destination):
 
 
 def build(source_path, build_path, install_path, targets):
-    del source_path
+    download_only = os.getenv("__PARSE_ARG_DOWNLOAD_ONLY") == "1"
+    if download_only and "install" in (targets or []):
+        raise RuntimeError("--download-only cannot be combined with --install")
 
-    target, expected_sha256 = ARTIFACTS[_host()]
+    host = _host()
+    artifact = ARTIFACTS.get((RELEASE,) + host)
+    if artifact is None:
+        raise RuntimeError(
+            "No artifact configured for release %s on %s %s"
+            % ((RELEASE,) + host)
+        )
+    target, expected_sha256 = artifact
     version = os.environ["REZ_BUILD_PROJECT_VERSION"]
     filename = "cpython-%s+%s-%s-install_only.tar.gz" % (
         version, RELEASE, target
@@ -133,7 +142,29 @@ def build(source_path, build_path, install_path, targets):
     archive_path = os.path.join(build_path, filename)
     python_path = os.path.join(build_path, "python")
 
-    _download(url, archive_path, expected_sha256)
+    if os.getenv("__PARSE_ARG_DOWNLOAD_UPSTREAM") == "1":
+        _download(url, archive_path, expected_sha256)
+    else:
+        archive_path = os.environ.get("__PARSE_ARG_ARCHIVE")
+        if not archive_path:
+            raise RuntimeError("Choose --download-upstream or --archive PATH")
+        archive_path = os.path.expanduser(archive_path)
+        if not os.path.isabs(archive_path):
+            archive_path = os.path.join(source_path, archive_path)
+        if not os.path.isfile(archive_path):
+            raise RuntimeError("Archive does not exist: %s" % archive_path)
+
+        actual_sha256 = _sha256(archive_path)
+        if actual_sha256 != expected_sha256:
+            raise RuntimeError(
+                "SHA-256 mismatch for %s: expected %s, got %s"
+                % (os.path.basename(archive_path), expected_sha256, actual_sha256)
+            )
+
+    if download_only:
+        print("Archive ready: %s" % archive_path)
+        return
+
     _extract(archive_path, python_path)
 
     if "install" in (targets or []):

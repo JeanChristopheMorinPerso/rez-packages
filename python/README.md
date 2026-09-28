@@ -18,7 +18,7 @@ single variant from Rez's detected platform, architecture, and operating system.
 Build and install it with:
 
 ```console
-rez-build --install
+rez-build --download-upstream --install
 ```
 
 Then verify the package with:
@@ -26,6 +26,41 @@ Then verify the package with:
 ```console
 rez-env python -- python --version
 ```
+
+## Offline builds
+
+While online, download and verify the archive without extracting it:
+
+```console
+rez-build --clean --download-upstream --download-only
+```
+
+This caches the archive in the variant's directory under `build`. Preserve that
+directory when transferring the source tree to an offline machine. On the
+offline machine, build and install without `--clean` so the cached archive is
+retained and reused:
+
+```console
+rez-build --download-upstream --install
+```
+
+The target machine must match the platform and architecture used for the
+download, and its Rez package path must already provide the corresponding
+`platform`, `arch`, and `os` packages. The checksum is verified again before the
+cached archive is used. Do not combine `--download-only` with `--install`.
+
+Alternatively, provide an archive from an internal mirror, shared drive, or
+other trusted transfer mechanism. This mode never accesses the network:
+
+```console
+rez-build --archive /path/to/cpython-install_only.tar.gz --install
+```
+
+Relative archive paths are resolved from the directory containing `package.py`.
+The provided archive must match the configured Python version, standalone
+release, platform, and architecture; its pinned checksum is always verified.
+Exactly one of `--download-upstream` and `--archive PATH` is required for every
+normal build, local install, or release.
 
 Run the build on each target platform and architecture that you want to publish;
 this recipe downloads native binaries and does not cross-compile. The Linux
