@@ -76,3 +76,15 @@ The Rez package version matches CPython's three-part version so tools such as
 rez-pip2 can pass it to pip's `--python-version` option. To update Python, change
 `version` in `package.py`, then update `RELEASE` and the checksums in `ARTIFACTS`
 from the upstream release's `SHA256SUMS` or GitHub release metadata.
+
+## Tests
+
+From this directory, in an environment containing Rez, pytest, and pytest-cov,
+run the suite with 100% statement and branch coverage enforced for the build
+logic. The suite also exercises the custom arguments and package definition
+through Rez's public APIs:
+
+```console
+python -m pytest --cov=. --cov-config=.coveragerc \
+    --cov-report=term-missing --cov-fail-under=100 tests
+```

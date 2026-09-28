@@ -1,0 +1,11 @@
+[run]
+branch = True
+source = .
+omit =
+    tests/*
+    parse_build_args.py
+    package.py
+
+[report]
+fail_under = 100
+show_missing = True
